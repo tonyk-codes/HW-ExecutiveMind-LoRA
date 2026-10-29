@@ -19,6 +19,8 @@ import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+from config import load_config
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -40,13 +42,15 @@ LORA_STATUS: dict[str, str] = {"state": "Not loaded", "detail": ""}
 
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
 
-BASE_MODEL = os.getenv("BASE_MODEL", "Qwen/Qwen3.6-27B")
-LORA_ADAPTER = os.getenv("LORA_ADAPTER", "tony-dev1/Qwen3.6-27B-Executive-Mindset")
-FAL_KEY = os.getenv("FAL_KEY", "")
-HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
-TTS_MODEL = os.getenv("FAL_TTS_MODEL", "fal-ai/minimax/speech-02-turbo")
-MODEL_LOAD_MODE = os.getenv("MODEL_LOAD_MODE", "bf16").lower()
-MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "10"))
+CONFIG = load_config()
+BASE_MODEL = CONFIG.base_model
+LORA_ADAPTER = CONFIG.lora_adapter
+FAL_KEY = CONFIG.fal_key
+HF_TOKEN = CONFIG.hf_token or None
+TTS_MODEL = CONFIG.tts_model
+MODEL_LOAD_MODE = CONFIG.model_load_mode
+MERGE_LORA = CONFIG.merge_lora
+MAX_QUEUE_SIZE = CONFIG.max_queue_size
 TALKINGHEAD_MODULE_URL = "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs"
 AVATAR_LABEL = "Little Jo Avatar"
 AVATAR_URL = "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/mpfb.glb"
@@ -156,7 +160,7 @@ def load_llm():
         _banner(f"attaching adapter {LORA_ADAPTER} (BF16 base)")
         model = PeftModel.from_pretrained(base_model, LORA_ADAPTER, token=HF_TOKEN, is_trainable=False)
         _verify_lora_attached(model, merged=False)
-        if os.getenv("MERGE_LORA", "1").lower() in {"1", "true", "yes", "on"}:
+        if MERGE_LORA:
             _banner("merging LoRA weights into base model (merge_and_unload)...")
             model = model.merge_and_unload()
             LORA_STATUS["state"] = "Loaded and merged"

@@ -1,0 +1,10 @@
+{
+  "base_model": "Qwen/Qwen3.6-27B",
+  "lora_adapter": "tony-dev1/HW-ExecutiveMind-LoRA-Qwen3.6-27B",
+  "fal_key": "",
+  "hf_token": "",
+  "tts_model": "fal-ai/minimax/speech-02-turbo",
+  "model_load_mode": "bf16",
+  "merge_lora": true,
+  "max_queue_size": 10
+}
