@@ -35,7 +35,7 @@ def _banner(msg: str) -> None:
     logger.info(msg)
 
 
-LORA_STATUS: dict[str, str] = {"state": "未加载", "detail": ""}
+LORA_STATUS: dict[str, str] = {"state": "Not loaded", "detail": ""}
 
 
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
@@ -48,7 +48,7 @@ TTS_MODEL = os.getenv("FAL_TTS_MODEL", "fal-ai/minimax/speech-02-turbo")
 MODEL_LOAD_MODE = os.getenv("MODEL_LOAD_MODE", "bf16").lower()
 MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "10"))
 TALKINGHEAD_MODULE_URL = "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs"
-AVATAR_LABEL = "数字人小Jo"
+AVATAR_LABEL = "Little Jo Avatar"
 AVATAR_URL = "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/mpfb.glb"
 AVATAR_BODY = "F"
 AVATAR_MOOD = "happy"
@@ -101,7 +101,7 @@ def launch_app(app: gr.Blocks) -> None:
 @lru_cache(maxsize=1)
 def load_llm():
     if not torch.cuda.is_available():
-        raise RuntimeError("未检测到 CUDA GPU，无法加载 Qwen 27B。请在 Hugging Face Space 选择 Nvidia A100 large。")
+        raise RuntimeError("No CUDA GPU detected, so Qwen 27B cannot be loaded. Please select Nvidia A100 large in Hugging Face Spaces.")
 
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True, token=HF_TOKEN)
 
@@ -120,8 +120,8 @@ def load_llm():
                 f"WARNING: adapter trained on {adapter_base} but BASE_MODEL is {BASE_MODEL}"
             )
     except Exception as cfg_err:
-        LORA_STATUS["state"] = "加载失败"
-        LORA_STATUS["detail"] = f"无法读取 adapter_config.json: {cfg_err}"
+        LORA_STATUS["state"] = "Load failed"
+        LORA_STATUS["detail"] = f"Could not read adapter_config.json: {cfg_err}"
         _banner(f"ERROR: failed to load adapter config from {LORA_ADAPTER}: {cfg_err}")
         raise
 
@@ -159,8 +159,8 @@ def load_llm():
         if os.getenv("MERGE_LORA", "1").lower() in {"1", "true", "yes", "on"}:
             _banner("merging LoRA weights into base model (merge_and_unload)...")
             model = model.merge_and_unload()
-            LORA_STATUS["state"] = "已加载并合并"
-            LORA_STATUS["detail"] = f"{LORA_ADAPTER}（merge_and_unload 完成）"
+            LORA_STATUS["state"] = "Loaded and merged"
+            LORA_STATUS["detail"] = f"{LORA_ADAPTER} (merge_and_unload completed)"
             _banner("merge complete")
 
     model.eval()
@@ -183,10 +183,10 @@ def _verify_lora_attached(model, merged: bool) -> None:
             lora_param_count += param.numel()
 
     if lora_module_count == 0 or lora_param_count == 0:
-        LORA_STATUS["state"] = "加载异常"
+        LORA_STATUS["state"] = "Load anomaly"
         LORA_STATUS["detail"] = (
-            f"PEFT 包装成功，但未注入 LoRA 层（modules={lora_module_count}, params={lora_param_count}）。"
-            " 多半是 adapter target_modules 与基座架构不匹配。"
+            f"PEFT wrapping succeeded, but no LoRA layers were injected (modules={lora_module_count}, params={lora_param_count})."
+            " The adapter target_modules likely do not match the base architecture."
         )
         _banner(
             f"ERROR: verification FAILED — modules={lora_module_count}, params={lora_param_count}. "
@@ -197,9 +197,9 @@ def _verify_lora_attached(model, merged: bool) -> None:
             "Check that adapter target_modules match the Qwen architecture."
         )
 
-    LORA_STATUS["state"] = "已加载" if not merged else "已加载并合并"
+    LORA_STATUS["state"] = "Loaded" if not merged else "Loaded and merged"
     LORA_STATUS["detail"] = (
-        f"{LORA_ADAPTER}：{lora_module_count} 个 LoRA 模块，{lora_param_count:,} 个 LoRA 参数"
+        f"{LORA_ADAPTER}: {lora_module_count} LoRA modules, {lora_param_count:,} LoRA parameters"
     )
     _banner(
         f"verification OK | LoRA modules={lora_module_count} params={lora_param_count:,} | "
@@ -321,18 +321,18 @@ def build_avatar_html(audio_path: str | None = None, enabled: bool = True) -> st
     if not enabled:
         return """
 <div class="avatar-disabled">
-  数字人已关闭
+    Avatar is disabled
 </div>
 """
 
     audio_data_uri = _file_to_data_uri(audio_path) if audio_path else ""
     has_audio = "true" if audio_data_uri and enabled else "false"
-    play_label = "播放数字人语音" if audio_data_uri and enabled else "等待语音生成"
+    play_label = "Play avatar voice" if audio_data_uri and enabled else "Waiting for audio"
     disabled_attr = "" if audio_data_uri and enabled else "disabled"
 
     iframe_doc = f"""
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -358,7 +358,7 @@ def build_avatar_html(audio_path: str | None = None, enabled: bool = True) -> st
 </head>
 <body>
   <div id="stage"></div>
-  <div id="loading">正在载入 3D 数字人...</div>
+    <div id="loading">Loading 3D avatar...</div>
   <div id="toolbar">
     <button id="play" {disabled_attr}>{html.escape(play_label)}</button>
         <div id="state">{html.escape(AVATAR_LABEL)}</div>
@@ -396,41 +396,41 @@ def build_avatar_html(audio_path: str | None = None, enabled: bool = True) -> st
             if (isIOS) return;
             if (!audioCtx) {{ audioCtx = new AudioContext(); analyser = audioCtx.createAnalyser(); analyser.fftSize = 256; }}
             if (!sourceConnected) {{ source = audioCtx.createMediaElementSource(audio); source.connect(analyser); analyser.connect(audioCtx.destination); sourceConnected = true; }}
-            if (audioCtx.state === "suspended") await withTimeout(audioCtx.resume(), 3000, "音频上下文启动超时");
+            if (audioCtx.state === "suspended") await withTimeout(audioCtx.resume(), 3000, "Audio context startup timed out");
     }}
     async function startPlayback() {{
             if (!hasAudio) return;
       try {{
-        setState("正在准备语音驱动...");
-                await withTimeout(prepareAudio(), 4000, "语音驱动准备超时");
+                setState("Preparing voice playback...");
+                                await withTimeout(prepareAudio(), 4000, "Voice playback preparation timed out");
         audio.currentTime = 0;
-                await withTimeout(audio.play(), 4000, "浏览器未能开始播放");
+                                await withTimeout(audio.play(), 4000, "The browser could not start playback");
       }} catch (error) {{
         console.error(error);
-                setState("请再次点击播放，或使用下方音频控件播放");
+                                setState("Click play again, or use the audio control below.");
         playButton.disabled = false;
       }}
     }}
     async function tryAutoplay() {{
       if (!hasAudio || autoplayed) return;
-            if (isIOS) {{ setState("数字人已就绪，请点击播放语音"); return; }}
+                        if (isIOS) {{ setState("Avatar is ready. Click play to hear the voice."); return; }}
       autoplayed = true;
       await startPlayback();
     }}
     async function initAvatar() {{
       head = new TalkingHead(stage, {{ lipsyncModules: [], cameraView: "upper" }});
-            await head.showAvatar({{ url: "{AVATAR_URL}", body: "{AVATAR_BODY}", avatarMood: "{AVATAR_MOOD}", lipsyncLang: "en" }}, (event) => {{ if (event.lengthComputable) loading.textContent = `正在载入 3D 数字人... ${{Math.round(event.loaded / event.total * 100)}}%`; }});
+                        await head.showAvatar({{ url: "{AVATAR_URL}", body: "{AVATAR_BODY}", avatarMood: "{AVATAR_MOOD}", lipsyncLang: "en" }}, (event) => {{ if (event.lengthComputable) loading.textContent = `Loading 3D avatar... ${{Math.round(event.loaded / event.total * 100)}}%`; }});
       loading.style.display = "none";
-            setState(hasAudio ? (isIOS ? "数字人已就绪，请点击播放语音" : "数字人已就绪，正在自动播放语音...") : "数字人已就绪，等待生成语音");
+                        setState(hasAudio ? (isIOS ? "Avatar is ready. Click play to hear the voice." : "Avatar is ready. Auto-playing voice...") : "Avatar is ready. Waiting for generated audio.");
                         if (hasAudio) audio.load();
       tryAutoplay();
     }}
     playButton.addEventListener("click", startPlayback);
         audio.addEventListener("loadeddata", () => {{ if (head) tryAutoplay(); }}, {{ once: true }});
     audio.addEventListener("canplaythrough", () => {{ if (head) tryAutoplay(); }}, {{ once: true }});
-        audio.addEventListener("play", () => {{ playButton.disabled = true; setState("正在播放语音并驱动嘴型"); cancelAnimationFrame(animationFrame); isIOS ? driveMouthFallback() : driveMouth(); }});
-    audio.addEventListener("ended", () => {{ cancelAnimationFrame(animationFrame); setBlendshape("viseme_aa", 0); setBlendshape("viseme_O", 0); setBlendshape("mouthOpen", 0); playButton.disabled = false; setState("语音已结束"); }});
-    initAvatar().catch((error) => {{ console.error(error); loading.textContent = `数字人加载失败：${{error.message || error}}`; setState("请检查网络或头像资源"); }});
+                audio.addEventListener("play", () => {{ playButton.disabled = true; setState("Playing audio and driving lip sync"); cancelAnimationFrame(animationFrame); isIOS ? driveMouthFallback() : driveMouth(); }});
+        audio.addEventListener("ended", () => {{ cancelAnimationFrame(animationFrame); setBlendshape("viseme_aa", 0); setBlendshape("viseme_O", 0); setBlendshape("mouthOpen", 0); playButton.disabled = false; setState("Audio playback finished"); }});
+        initAvatar().catch((error) => {{ console.error(error); loading.textContent = `Avatar failed to load: ${{error.message || error}}`; setState("Please check the network or avatar asset."); }});
   </script>
 </body>
 </html>
@@ -438,7 +438,7 @@ def build_avatar_html(audio_path: str | None = None, enabled: bool = True) -> st
     escaped_doc = html.escape(iframe_doc, quote=True)
     return f"""
 <div class="avatar-frame-wrap">
-  <iframe class="avatar-frame" title="TalkingHead 3D 数字人" allow="autoplay" srcdoc="{escaped_doc}"></iframe>
+    <iframe class="avatar-frame" title="TalkingHead 3D avatar" allow="autoplay" srcdoc="{escaped_doc}"></iframe>
 </div>
 """
 
@@ -453,7 +453,7 @@ def build_audio_banner(enabled: bool = True) -> str:
     if not enabled:
         return """
 <div class="media-disabled">
-  语音已关闭
+    Audio is disabled
 </div>
 """
     return ""
@@ -466,22 +466,22 @@ def format_status(stage: str | None = None, progress: int = 0, started_at: float
     if stage:
         timer_attr = f" data-started-at='{started_at:.3f}'" if started_at else ""
         stage_line = (
-            f"<div>- 当前状态: {html.escape(stage)}</div>"
+            f"<div>- Current status: {html.escape(stage)}</div>"
             "<div class='status-progress-wrap'>"
             f"<div class='status-progress-fill' style='width: {safe_progress}%;'></div>"
             "</div>"
-            f"<div class='status-meta'>进度：{safe_progress}% · <span class='status-elapsed'{timer_attr}>已用：{elapsed:.1f} 秒</span></div>"
+            f"<div class='status-meta'>Progress: {safe_progress}% · <span class='status-elapsed'{timer_attr}>Elapsed: {elapsed:.1f} s</span></div>"
         )
-    gpu = "是" if torch.cuda.is_available() else "否"
+    gpu = "Yes" if torch.cuda.is_available() else "No"
     lora_detail = f"（{LORA_STATUS['detail']}）" if LORA_STATUS["detail"] else ""
     return (
         "<div class='status-content'>"
         + stage_line
         + "<div class='status-lines'>"
-        f"<div>- GPU 可用: {html.escape(gpu)}</div>"
-        f"<div>- 基座: {html.escape(BASE_MODEL)}</div>"
-        f"<div>- LoRA Adapter: {html.escape(LORA_ADAPTER)}</div>"
-        f"<div>- LoRA 状态: {html.escape(LORA_STATUS['state'] + lora_detail)}</div>"
+        f"<div>- GPU available: {html.escape(gpu)}</div>"
+        f"<div>- Base model: {html.escape(BASE_MODEL)}</div>"
+        f"<div>- LoRA adapter: {html.escape(LORA_ADAPTER)}</div>"
+        f"<div>- LoRA status: {html.escape(LORA_STATUS['state'] + lora_detail)}</div>"
         "</div></div>"
     )
 
@@ -517,11 +517,11 @@ def run_pipeline(
         enable_tts = True
     if not question or not question.strip():
         yield (
-            "请先输入问题，再点击生成。",
+            "Please enter a question before clicking Generate.",
             build_audio_banner(enabled=enable_tts),
             gr.update(value=None, visible=enable_tts),
             build_avatar_html(enabled=enable_avatar),
-            format_status("等待输入问题", progress=0),
+            format_status("Waiting for a question", progress=0),
         )
         return
     started_at = time.time()
@@ -531,7 +531,7 @@ def run_pipeline(
             build_audio_banner(enabled=enable_tts),
             gr.update(value=None, visible=enable_tts),
             build_avatar_html(enabled=enable_avatar),
-            format_status("准备 Qwen 与 LoRA", progress=12, started_at=started_at),
+            format_status("Preparing Qwen and LoRA", progress=12, started_at=started_at),
         )
         load_llm()
         yield (
@@ -539,29 +539,29 @@ def run_pipeline(
             build_audio_banner(enabled=enable_tts),
             gr.update(value=None, visible=enable_tts),
             build_avatar_html(enabled=enable_avatar),
-            format_status("生成管理建议", progress=52, started_at=started_at),
+            format_status("Generating management guidance", progress=52, started_at=started_at),
         )
         answer = generate_qwen_answer(question.strip(), temperature=temperature, top_p=top_p, max_new_tokens=max_new_tokens)
         audio_path = None
         if enable_tts:
             if not FAL_KEY:
-                answer += "\n\n> 提示：未检测到 FAL_KEY，已跳过语音合成。请在 Hugging Face Space Secrets 中添加 FAL_KEY。"
+                answer += "\n\n> Note: FAL_KEY was not detected, so text-to-speech was skipped. Add FAL_KEY in Hugging Face Space Secrets."
             else:
                 yield (
                     gr.update(),
                     build_audio_banner(enabled=True),
                     gr.update(value=None, visible=True),
                     build_avatar_html(enabled=enable_avatar),
-                    format_status("生成语音", progress=78, started_at=started_at),
+                    format_status("Generating audio", progress=78, started_at=started_at),
                 )
                 audio_path, _ = generate_tts(answer[:300])
         if enable_avatar and not audio_path and enable_tts:
-            answer += "\n\n> 提示：数字人嘴型需要语音输入，请检查语音是否已成功生成。"
+            answer += "\n\n> Note: Avatar lip sync requires generated audio input. Please check whether audio generation completed successfully."
         avatar_html = build_avatar_html(audio_path, enabled=enable_avatar)
-        yield answer, build_audio_banner(enabled=enable_tts), gr.update(value=audio_path, visible=enable_tts), avatar_html, format_status("生成完成", progress=100, started_at=started_at)
+        yield answer, build_audio_banner(enabled=enable_tts), gr.update(value=audio_path, visible=enable_tts), avatar_html, format_status("Generation complete", progress=100, started_at=started_at)
     except Exception as err:
-        error_text = f"生成失败：{err}"
-        yield error_text, build_audio_banner(enabled=enable_tts), gr.update(value=None, visible=enable_tts), build_avatar_html(enabled=enable_avatar), format_status("生成失败", progress=100, started_at=started_at)
+        error_text = f"Generation failed: {err}"
+        yield error_text, build_audio_banner(enabled=enable_tts), gr.update(value=None, visible=enable_tts), build_avatar_html(enabled=enable_avatar), format_status("Generation failed", progress=100, started_at=started_at)
 
 
 CUSTOM_CSS = """
@@ -861,7 +861,7 @@ APP_JS = """
             const startedAt = Number(element.getAttribute("data-started-at"));
             if (!Number.isFinite(startedAt)) return;
             const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
-            element.textContent = `已用：${elapsed.toFixed(1)} 秒`;
+            element.textContent = `Elapsed: ${elapsed.toFixed(1)} s`;
         });
     }
 
@@ -874,14 +874,14 @@ APP_JS = """
 
 
 def build_ui():
-    with gr.Blocks(title="华为管理者思维大模型", js=APP_JS) as demo:
+    with gr.Blocks(title="Huawei Executive Mindset LLM", js=APP_JS) as demo:
         gr.HTML(f"<style>{CUSTOM_CSS}</style>")
         gr.HTML(
             """
             <div class='app-shell'>
               <section class='hero'>
                                 <p class='hero-kicker'>Executive Mindset AI</p>
-                <h1 class='hero-title'>华为管理者思维大模型</h1>
+                <h1 class='hero-title'>Huawei Executive Mindset LLM</h1>
               </section>
             </div>
             """
@@ -889,29 +889,29 @@ def build_ui():
         with gr.Row(equal_height=True):
             with gr.Column(scale=5):
                 with gr.Group(elem_classes=["panel"]):
-                    gr.HTML("<div class='section-head'><h2 class='section-title'>管理问题输入</h2></div>")
-                    question = gr.Textbox(lines=6, placeholder="例如：在当前不确定的市场环境下，企业应如何保持战略定力并平衡增长与现金流安全？", label="请输入您的问题")
+                    gr.HTML("<div class='section-head'><h2 class='section-title'>Management Question</h2></div>")
+                    question = gr.Textbox(lines=6, placeholder="Example: In an uncertain market environment, how should a company maintain strategic focus while balancing growth and cash-flow safety?", label="Enter your question")
                     with gr.Row():
-                        temperature = gr.Slider(0.2, 0.7, value=0.5, step=0.05, label="创造性（Temperature）")
-                        top_p = gr.Slider(0.45, 0.85, value=0.65, step=0.05, label="采样范围（Top-p）")
-                        max_new_tokens = gr.Slider(96, 384, value=224, step=16, label="回答长度上限")
+                        temperature = gr.Slider(0.2, 0.7, value=0.5, step=0.05, label="Creativity (Temperature)")
+                        top_p = gr.Slider(0.45, 0.85, value=0.65, step=0.05, label="Sampling range (Top-p)")
+                        max_new_tokens = gr.Slider(96, 384, value=224, step=16, label="Maximum answer length")
                     with gr.Row(elem_classes=["toggle-row"]):
-                        enable_tts = gr.Checkbox(value=True, label="生成语音", elem_classes=["control-toggle"])
-                        enable_avatar = gr.Checkbox(value=True, label="启用数字人小Jo", elem_classes=["control-toggle"])
-                    run_btn = gr.Button("生成回答", elem_classes=["primary-btn"])
+                        enable_tts = gr.Checkbox(value=True, label="Generate audio", elem_classes=["control-toggle"])
+                        enable_avatar = gr.Checkbox(value=True, label="Enable Little Jo avatar", elem_classes=["control-toggle"])
+                    run_btn = gr.Button("Generate answer", elem_classes=["primary-btn"])
             with gr.Column(scale=3):
                 with gr.Group(elem_classes=["panel"]):
-                    gr.HTML("<div class='section-head'><h2 class='section-title'>运行诊断</h2><p class='section-caption'>LoRA Adapter 加载状态</p></div>")
+                    gr.HTML("<div class='section-head'><h2 class='section-title'>Runtime Diagnostics</h2><p class='section-caption'>LoRA adapter loading status</p></div>")
                     status_box = gr.HTML(value=format_status(), elem_classes=["log-window"])
         with gr.Group(elem_classes=["panel"]):
-            gr.HTML("<div class='section-head'><h2 class='section-title'>华为管理者思维大模型回答</h2></div>")
-            answer_output = gr.Markdown("<div class='answer-box'>等待输入问题后开始生成...</div>")
+            gr.HTML("<div class='section-head'><h2 class='section-title'>Huawei Executive Mindset LLM Answer</h2></div>")
+            answer_output = gr.Markdown("<div class='answer-box'>Generation will start after you enter a question.</div>")
         with gr.Group(elem_classes=["panel"]):
-            gr.HTML("<div class='section-head'><h2 class='section-title'>语音</h2></div>")
+            gr.HTML("<div class='section-head'><h2 class='section-title'>Audio</h2></div>")
             audio_banner = gr.HTML(value=build_audio_banner(enabled=True))
-            audio_output = gr.Audio(label="语音", type="filepath")
+            audio_output = gr.Audio(label="Audio", type="filepath")
         with gr.Group(elem_classes=["panel"]):
-            gr.HTML("<div class='section-head'><h2 class='section-title'>数字人小Jo</h2></div>")
+            gr.HTML("<div class='section-head'><h2 class='section-title'>Little Jo Avatar</h2></div>")
             avatar_output = gr.HTML(value=build_avatar_html())
         run_btn.click(
             fn=run_pipeline,
